@@ -16,6 +16,11 @@ package com.megatome.knowndefects;
  * limitations under the License.
  */
 
+import com.megatome.knowndefects.info.AnnotationInformation;
+import com.megatome.knowndefects.info.KnownDefectInformation;
+import com.megatome.knowndefects.scan.AnnotationScanException;
+import com.megatome.knowndefects.scan.AnnotationScanResults;
+import com.megatome.knowndefects.scan.AnnotationScanner;
 import org.apache.maven.doxia.sink.Sink;
 import org.apache.maven.doxia.siterenderer.Renderer;
 import org.apache.maven.project.MavenProject;
@@ -24,10 +29,7 @@ import org.apache.maven.reporting.MavenReport;
 import org.apache.maven.reporting.MavenReportException;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.ResourceBundle;
+import java.util.*;
 
 /**
  * Goal for creating a report of KnownDefect annotations
@@ -100,37 +102,98 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
             outputDirectory.mkdirs();
         }
 
-        getLog().warn("Source roots == null: " + (getSourceRoots() == null));
-        getLog().warn("Source roots size: " + getSourceRoots().size());
         final List<String> things = new ArrayList<String>();
         for (Object obj : getSourceRoots()) {
             final String s = (String)obj;
-            getLog().warn("Name: " + s);
             things.add(s);
+        }
+
+        final List<AnnotationScanResults> resultsList = new ArrayList<AnnotationScanResults>();
+        for (final String path : things) {
+            try {
+                final AnnotationScanResults results = AnnotationScanner.findAnnotationsInPath(path, getLog());
+                resultsList.add(results);
+            } catch (AnnotationScanException e) {
+                getLog().error("Could not load annotations", e);
+                throw new MavenReportException("Failed to scan test classes", e);
+            }
         }
 
         Sink sink = getSink();
         sink.head();
         sink.title();
-        sink.text("Some Title");
+        sink.text("Known Defects Report");
         sink.title_();
         sink.head_();
 
         sink.body();
-        sink.table();
+
+        sink.section1();
+        sink.sectionTitle1();
+        sink.text("Known Defects Report");
+        sink.sectionTitle1_();
+        sink.section1_();
+
+
+        for (final AnnotationScanResults scanResults : resultsList) {
+            if (scanResults.hasKnownDefectResults()) {
+                for (Map.Entry<String, List<AnnotationInformation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                    sink.section3();
+                    sink.sectionTitle3();
+                    sink.text(entry.getKey());
+                    sink.sectionTitle3_();
+                    sink.section3_();
+
+                    sink.table();
+                    sink.tableRow();
+                    sink.tableHeaderCell();
+                    sink.text("Method");
+                    sink.tableHeaderCell_();
+                    sink.tableHeaderCell();
+                    sink.text("Line");
+                    sink.tableHeaderCell_();
+                    sink.tableHeaderCell();
+                    sink.text("Note");
+                    sink.tableHeaderCell_();
+                    sink.tableRow_();
+
+                    for (final AnnotationInformation information : entry.getValue()) {
+                        final KnownDefectInformation annotationInformation = (KnownDefectInformation)information;
+                        sink.tableRow();
+                        sink.tableCell();
+                        sink.text(annotationInformation.getMethodName());
+                        sink.tableCell_();
+                        sink.tableCell();
+                        sink.text(String.valueOf(annotationInformation.getLineNumber()));
+                        sink.tableCell_();
+                        sink.tableCell();
+                        sink.text(annotationInformation.getValue());
+                        sink.tableCell_();
+                        sink.tableRow_();
+                    }
+
+                    sink.table_();
+                }
+            }
+        }
+        /*sink.table();
         sink.tableRow();
         sink.tableHeaderCell();
         sink.text("File name");
         sink.tableHeaderCell_();
         sink.tableRow_();
-        for (final String s : things) {
-            sink.tableRow();
-            sink.tableCell();
-            sink.text(s);
-            sink.tableCell_();
-            sink.tableRow_();
+        for (final AnnotationScanResults scanResults : resultsList) {
+            if (scanResults.hasKnownDefectResults()) {
+                for (Map.Entry<String, List<AnnotationInformation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                    sink.tableRow();
+                    sink.tableCell();
+                    sink.text(entry.getKey());
+                    sink.tableCell_();
+                    sink.tableRow_();
+                }
+            }
         }
-        sink.table_();
+        sink.table_();*/
         sink.body_();
         sink.flush();
         sink.close();
