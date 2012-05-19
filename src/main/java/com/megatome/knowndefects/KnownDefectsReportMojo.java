@@ -21,6 +21,7 @@ import com.megatome.knowndefects.info.KnownDefectInformation;
 import com.megatome.knowndefects.scan.AnnotationScanException;
 import com.megatome.knowndefects.scan.AnnotationScanResults;
 import com.megatome.knowndefects.scan.AnnotationScanner;
+import com.megatome.knowndefects.scan.ClassAnnotation;
 import org.apache.maven.doxia.sink.Sink;
 import org.apache.maven.doxia.siterenderer.Renderer;
 import org.apache.maven.project.MavenProject;
@@ -108,11 +109,11 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
             things.add(s);
         }
 
-        final List<AnnotationScanResults> resultsList = new ArrayList<AnnotationScanResults>();
+        final AnnotationScanResults scanResults = new AnnotationScanResults();
         for (final String path : things) {
             try {
                 final AnnotationScanResults results = AnnotationScanner.findAnnotationsInPath(path, getLog());
-                resultsList.add(results);
+                scanResults.merge(results);
             } catch (AnnotationScanException e) {
                 getLog().error("Could not load annotations", e);
                 throw new MavenReportException("Failed to scan test classes", e);
@@ -134,10 +135,181 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.sectionTitle1_();
         sink.section1_();
 
+        sink.section1();
+        sink.sectionTitle1();
+        sink.text("Summary");
+        sink.sectionTitle1_();
+        sink.section1_();
 
-        for (final AnnotationScanResults scanResults : resultsList) {
+        sink.table();
+        sink.tableRow();
+        sink.tableHeaderCell();
+        sink.text("Annotation Name");
+        sink.tableHeaderCell_();
+        sink.tableHeaderCell();
+        sink.text("Count");
+        sink.tableHeaderCell_();
+        sink.tableRow_();
+
+        if (scanResults.hasKnownDefectResults()) {
+            sink.tableRow();
+            sink.tableCell();
+            sink.link("#kdpackage");
+            sink.text("@KnownDefect");
+            sink.link_();
+            sink.anchor_();
+            sink.tableCell_();
+            sink.tableCell();
+            sink.text(String.valueOf(scanResults.getKnownDefectResultsCount()));
+            sink.tableCell_();
+            sink.tableRow_();
+        }
+
+        if (scanResults.hasKnownAcceptedDefectResults()) {
+            sink.tableRow();
+            sink.tableCell();
+            sink.text("@KnownAcceptedDefect");
+            sink.tableCell_();
+            sink.tableCell();
+            sink.text(String.valueOf(scanResults.getKnownAcceptedDefectResultsCount()));
+            sink.tableCell_();
+            sink.tableRow_();
+        }
+
+        sink.table_();
+
+        sink.section1();
+        sink.sectionTitle1();
+        sink.anchor("kdpackage");
+        sink.text("@KnownDefect Package List");
+        sink.anchor_();
+        sink.sectionTitle1_();
+        sink.section1_();
+
+        sink.table();
+        sink.tableRow();
+        sink.tableHeaderCell();
+        sink.text("Package");
+        sink.tableHeaderCell_();
+        sink.tableHeaderCell();
+        sink.text("Type");
+        sink.tableHeaderCell_();
+        sink.tableHeaderCell();
+        sink.text("Count");
+        sink.tableHeaderCell_();
+        sink.tableRow_();
+
+        if (scanResults.hasKnownDefectResults()) {
+            for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                sink.tableRow();
+                sink.tableCell();
+                sink.link("#kd." + entry.getKey());
+                sink.text(entry.getKey());
+                sink.link_();
+                sink.tableCell_();
+                sink.tableCell();
+                sink.text("@KnownDefect");
+                sink.tableCell_();
+                sink.tableCell();
+                sink.text(String.valueOf(entry.getValue().size()));
+                sink.tableCell_();
+                sink.tableRow_();
+            }
+        }
+
+        sink.table_();
+
+        if (scanResults.hasKnownDefectResults()) {
+            for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                sink.section2();
+                sink.sectionTitle2();
+                sink.anchor("kd." + entry.getKey());
+                sink.text(entry.getKey());
+                sink.anchor_();
+                sink.sectionTitle2_();
+                sink.section2_();
+
+                sink.table();
+                sink.tableRow();
+                sink.tableHeaderCell();
+                sink.text("Class Name");
+                sink.tableHeaderCell_();
+                sink.tableHeaderCell();
+                sink.text("Count");
+                sink.tableHeaderCell_();
+                sink.tableRow_();
+
+                for (final ClassAnnotation classAnnotation : entry.getValue()) {
+                    sink.tableRow();
+                    sink.tableCell();
+                    sink.link("#kd." + entry.getKey() + "." + classAnnotation.getClassName());
+                    sink.text(classAnnotation.getClassName());
+                    sink.link_();
+                    sink.tableCell_();
+                    sink.tableCell();
+                    sink.text(String.valueOf(classAnnotation.getAnnotations().size()));
+                    sink.tableCell_();
+                    sink.tableRow_();
+                }
+            }
+        }
+
+        sink.table_();
+
+        sink.section1();
+        sink.sectionTitle1();
+        sink.anchor("kdannotations");
+        sink.text("@KnownDefect Annotations");
+        sink.anchor_();
+        sink.sectionTitle1_();
+        sink.section1_();
+
+        if (scanResults.hasKnownDefectResults()) {
+            for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                for (final ClassAnnotation classAnnotation : entry.getValue()) {
+                    sink.section2();
+                    sink.sectionTitle2();
+                    sink.anchor("kd." + entry.getKey() + "." + classAnnotation.getClassName());
+                    sink.text(classAnnotation.getClassName());
+                    sink.anchor_();
+                    sink.sectionTitle2_();
+                    sink.section2_();
+
+                    sink.table();
+                    sink.tableRow();
+                    sink.tableHeaderCell();
+                    sink.text("Method Name");
+                    sink.tableHeaderCell_();
+                    sink.tableHeaderCell();
+                    sink.text("Line");
+                    sink.tableHeaderCell_();
+                    sink.tableHeaderCell();
+                    sink.text("Note");
+                    sink.tableHeaderCell_();
+                    sink.tableRow_();
+
+                    for (final AnnotationInformation information : classAnnotation.getAnnotations()) {
+                        final KnownDefectInformation annotationInformation = (KnownDefectInformation)information;
+                        sink.tableRow();
+                        sink.tableCell();
+                        sink.text(information.getMethodName());
+                        sink.tableCell_();
+                        sink.tableCell();
+                        sink.text(String.valueOf(annotationInformation.getLineNumber()));
+                        sink.tableCell_();
+                        sink.tableCell();
+                        sink.text(annotationInformation.getValue());
+                        sink.tableCell_();
+                        sink.tableRow_();
+                    }
+                }
+            }
+        }
+
+        sink.table_();
+        /*for (final AnnotationScanResults scanResults : resultsList) {
             if (scanResults.hasKnownDefectResults()) {
-                for (Map.Entry<String, List<AnnotationInformation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                for (Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
                     sink.section3();
                     sink.sectionTitle3();
                     sink.text(entry.getKey());
@@ -175,7 +347,9 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
                     sink.table_();
                 }
             }
-        }
+        }*/
+
+
         /*sink.table();
         sink.tableRow();
         sink.tableHeaderCell();

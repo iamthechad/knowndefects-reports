@@ -1,11 +1,35 @@
 package com.megatome.knowndefects.scan;
 
-/**
- * Created with IntelliJ IDEA.
- * User: chad
- * Date: 5/18/12
- * Time: 6:51 PM
- * To change this template use File | Settings | File Templates.
- */
+import com.megatome.knowndefects.info.AnnotationInformation;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class ClassAnnotation {
+    private String packageName;
+    private String className;
+
+    private List<AnnotationInformation> annotations = new ArrayList<AnnotationInformation>();
+
+    public ClassAnnotation(final String packageName, final String className) {
+        this.packageName = packageName;
+        this.className = className;
+    }
+
+    public String getPackageName() {
+        return packageName;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void addAnnotation(final AnnotationInformation information) {
+        this.annotations.add(information);
+    }
+
+    public List<AnnotationInformation> getAnnotations() {
+        return annotations;
+    }
 }
+

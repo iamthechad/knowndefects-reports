@@ -26,8 +26,8 @@ import java.util.*;
  * Holds the results of a annotation scan.
  */
 public class AnnotationScanResults {
-    private final Map<String, List<AnnotationInformation>> knownDefectResults = new HashMap<String, List<AnnotationInformation>>();
-    private final Map<String, List<AnnotationInformation>> knownAcceptedDefectResults = new HashMap<String, List<AnnotationInformation>>();
+    private final Map<String, List<ClassAnnotation>> knownDefectResults = new TreeMap<String, List<ClassAnnotation>>();
+    private final Map<String, List<ClassAnnotation>> knownAcceptedDefectResults = new TreeMap<String, List<ClassAnnotation>>();
 
     /**
      * Add a result
@@ -44,20 +44,51 @@ public class AnnotationScanResults {
         }
     }
 
-    private void addToResults(final Map<String, List<AnnotationInformation>> map, String className, AnnotationInformation info) {
-        List<AnnotationInformation> l = map.get(className);
+    private void addToResults(final Map<String, List<ClassAnnotation>> map, final String fullClassName, final AnnotationInformation info) {
+        int idx = fullClassName.lastIndexOf(".");
+        final String packageName = fullClassName.substring(0, idx);
+        final String className = fullClassName.substring(idx+1);
+        addToResults(map, packageName, className, info);
+    }
+
+    private void addToResults(final Map<String, List<ClassAnnotation>> map, final String packageName, final String className, final AnnotationInformation info) {
+        List<ClassAnnotation> l = map.get(className);
         if (null == l) {
-            l = new ArrayList<AnnotationInformation>();
+            l = new ArrayList<ClassAnnotation>();
         }
-        l.add(info);
-        map.put(className, l);
+
+        ClassAnnotation classAnnotation = null;
+        for (final ClassAnnotation ca : l) {
+            if (ca.getClassName().equals(className)) {
+                classAnnotation = ca;
+                break;
+            }
+        }
+        if (null == classAnnotation) {
+            classAnnotation = new ClassAnnotation(packageName, className);
+        }
+        classAnnotation.addAnnotation(info);
+        l.add(classAnnotation);
+        map.put(packageName, l);
+    }
+
+    public void merge(final AnnotationScanResults results) {
+        if (results.hasKnownDefectResults()) {
+            for (final Map.Entry<String, List<ClassAnnotation>> entry : results.getKnownDefectResults().entrySet()) {
+                for (final ClassAnnotation classAnnotation : entry.getValue()) {
+                    for (final AnnotationInformation information : classAnnotation.getAnnotations()) {
+                        addToResults(knownDefectResults, classAnnotation.getPackageName(), classAnnotation.getClassName(), information);
+                    }
+                }
+            }
+        }
     }
 
     /**
      * Get all found KnownDefect annotations
      * @return Map of results, with class name found in as key. May be empty.
      */
-    public Map<String, List<AnnotationInformation>> getKnownDefectResults() {
+    public Map<String, List<ClassAnnotation>> getKnownDefectResults() {
         return knownDefectResults;
     }
 
@@ -65,7 +96,7 @@ public class AnnotationScanResults {
      * Get all found KnownAndAcceptedDefect annotations
      * @return Map of results, with class name found in as key. May be empty.
      */
-    public Map<String, List<AnnotationInformation>> getKnownAcceptedDefectResults() {
+    public Map<String, List<ClassAnnotation>> getKnownAcceptedDefectResults() {
         return knownAcceptedDefectResults;
     }
 
@@ -75,5 +106,13 @@ public class AnnotationScanResults {
 
     public boolean hasKnownAcceptedDefectResults() {
         return !knownAcceptedDefectResults.isEmpty();
+    }
+
+    public int getKnownDefectResultsCount() {
+        return knownDefectResults.size();
+    }
+
+    public int getKnownAcceptedDefectResultsCount() {
+        return knownAcceptedDefectResults.size();
     }
 }
