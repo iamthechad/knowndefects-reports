@@ -165,7 +165,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
             sink.tableRow_();
         }
 
-        if (scanResults.hasKnownAcceptedDefectResults()) {
+        /*if (scanResults.hasKnownAcceptedDefectResults()) {
             sink.tableRow();
             sink.tableCell();
             sink.text("@KnownAcceptedDefect");
@@ -174,19 +174,54 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
             sink.text(String.valueOf(scanResults.getKnownAcceptedDefectResultsCount()));
             sink.tableCell_();
             sink.tableRow_();
-        }
+        }*/
 
         sink.table_();
 
         sink.section1();
         sink.sectionTitle1();
-        sink.anchor("kdpackage");
-        sink.text("@KnownDefect Package List");
+        sink.anchor("package");
+        sink.text("Package List");
         sink.anchor_();
         sink.sectionTitle1_();
         sink.section1_();
 
-        sink.table();
+        if (scanResults.hasKnownDefectResults()) {
+            sink.section3();
+            sink.sectionTitle3();
+            sink.anchor("kdpackage");
+            sink.text("@KnownDefect");
+            sink.anchor_();
+            sink.sectionTitle3_();
+            sink.section3_();
+
+            sink.table();
+            sink.tableRow();
+            sink.tableHeaderCell();
+            sink.text("Package");
+            sink.tableHeaderCell_();
+            sink.tableHeaderCell();
+            sink.text("Count");
+            sink.tableHeaderCell_();
+            sink.tableRow_();
+
+            for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+                sink.tableRow();
+                sink.tableCell();
+                sink.link("#kd." + entry.getKey());
+                sink.text(entry.getKey());
+                sink.link_();
+                sink.tableCell_();
+                sink.tableCell();
+                sink.text(String.valueOf(entry.getValue().size()));
+                sink.tableCell_();
+                sink.tableRow_();
+            }
+
+            sink.table_();
+        }
+
+        /*sink.table();
         sink.tableRow();
         sink.tableHeaderCell();
         sink.text("Package");
@@ -199,8 +234,8 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.tableHeaderCell_();
         sink.tableRow_();
 
-        if (scanResults.hasKnownDefectResults()) {
-            for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
+        if (scanResults.hasResults()) {
+            for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getAllResults().entrySet()) {
                 sink.tableRow();
                 sink.tableCell();
                 sink.link("#kd." + entry.getKey());
@@ -217,9 +252,9 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
             }
         }
 
-        sink.table_();
+        sink.table_();*/
 
-        if (scanResults.hasKnownDefectResults()) {
+        /*if (scanResults.hasKnownDefectResults()) {
             for (final Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
                 sink.section2();
                 sink.sectionTitle2();
@@ -306,68 +341,8 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
             }
         }
 
-        sink.table_();
-        /*for (final AnnotationScanResults scanResults : resultsList) {
-            if (scanResults.hasKnownDefectResults()) {
-                for (Map.Entry<String, List<ClassAnnotation>> entry : scanResults.getKnownDefectResults().entrySet()) {
-                    sink.section3();
-                    sink.sectionTitle3();
-                    sink.text(entry.getKey());
-                    sink.sectionTitle3_();
-                    sink.section3_();
-
-                    sink.table();
-                    sink.tableRow();
-                    sink.tableHeaderCell();
-                    sink.text("Method");
-                    sink.tableHeaderCell_();
-                    sink.tableHeaderCell();
-                    sink.text("Line");
-                    sink.tableHeaderCell_();
-                    sink.tableHeaderCell();
-                    sink.text("Note");
-                    sink.tableHeaderCell_();
-                    sink.tableRow_();
-
-                    for (final AnnotationInformation information : entry.getValue()) {
-                        final KnownDefectInformation annotationInformation = (KnownDefectInformation)information;
-                        sink.tableRow();
-                        sink.tableCell();
-                        sink.text(annotationInformation.getMethodName());
-                        sink.tableCell_();
-                        sink.tableCell();
-                        sink.text(String.valueOf(annotationInformation.getLineNumber()));
-                        sink.tableCell_();
-                        sink.tableCell();
-                        sink.text(annotationInformation.getValue());
-                        sink.tableCell_();
-                        sink.tableRow_();
-                    }
-
-                    sink.table_();
-                }
-            }
-        }*/
-
-
-        /*sink.table();
-        sink.tableRow();
-        sink.tableHeaderCell();
-        sink.text("File name");
-        sink.tableHeaderCell_();
-        sink.tableRow_();
-        for (final AnnotationScanResults scanResults : resultsList) {
-            if (scanResults.hasKnownDefectResults()) {
-                for (Map.Entry<String, List<AnnotationInformation>> entry : scanResults.getKnownDefectResults().entrySet()) {
-                    sink.tableRow();
-                    sink.tableCell();
-                    sink.text(entry.getKey());
-                    sink.tableCell_();
-                    sink.tableRow_();
-                }
-            }
-        }
         sink.table_();*/
+
         sink.body_();
         sink.flush();
         sink.close();

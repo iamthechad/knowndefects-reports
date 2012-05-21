@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Interface representing generic annotation information found by the scanner.
  */
-public interface AnnotationInformation {
+public interface AnnotationInformation extends Comparable<AnnotationInformation> {
     /**
      * Get the list of all found method names within the annotation.
      * @return Found annotation method names. Will be empty if none found.

@@ -1,11 +1,13 @@
 package com.megatome.knowndefects.scan;
 
+import com.google.common.base.internal.Finalizer;
 import com.megatome.knowndefects.info.AnnotationInformation;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class ClassAnnotation {
+public class ClassAnnotation implements Comparable<ClassAnnotation> {
     private String packageName;
     private String className;
 
@@ -26,10 +28,21 @@ public class ClassAnnotation {
 
     public void addAnnotation(final AnnotationInformation information) {
         this.annotations.add(information);
+        Collections.sort(annotations);
     }
 
     public List<AnnotationInformation> getAnnotations() {
         return annotations;
+    }
+
+    public void merge(final ClassAnnotation mergeSource) {
+        annotations.addAll(mergeSource.getAnnotations());
+        Collections.sort(annotations);
+    }
+
+    @Override
+    public int compareTo(ClassAnnotation classAnnotation) {
+        return this.className.compareTo(classAnnotation.className);
     }
 }
 

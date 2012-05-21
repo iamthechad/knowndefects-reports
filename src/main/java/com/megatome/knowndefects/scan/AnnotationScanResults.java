@@ -26,8 +26,10 @@ import java.util.*;
  * Holds the results of a annotation scan.
  */
 public class AnnotationScanResults {
-    private final Map<String, List<ClassAnnotation>> knownDefectResults = new TreeMap<String, List<ClassAnnotation>>();
-    private final Map<String, List<ClassAnnotation>> knownAcceptedDefectResults = new TreeMap<String, List<ClassAnnotation>>();
+    //private final Map<String, List<ClassAnnotation>> knownDefectResults = new TreeMap<String, List<ClassAnnotation>>();
+    //private final Map<String, List<ClassAnnotation>> knownAcceptedDefectResults = new TreeMap<String, List<ClassAnnotation>>();
+    //private final Map<String, List<ClassAnnotation>> results = new TreeMap<String, List<ClassAnnotation>>();
+    private final Map<String, PackageScanResults> results = new TreeMap<String, PackageScanResults>();
 
     /**
      * Add a result
@@ -37,21 +39,29 @@ public class AnnotationScanResults {
     public void addResult(final String className, final AnnotationInformation info) {
         if (null == info) return;
 
-        if (info instanceof KnownDefectInformation) {
+        addToResults(className, info);
+        /*if (info instanceof KnownDefectInformation) {
             addToResults(knownDefectResults, className, info);
         } else if (info instanceof KnownAcceptedDefectInformation) {
             addToResults(knownAcceptedDefectResults, className, info);
-        }
+        }*/
     }
 
-    private void addToResults(final Map<String, List<ClassAnnotation>> map, final String fullClassName, final AnnotationInformation info) {
+    /*private void addToResults(final Map<String, List<ClassAnnotation>> map, final String fullClassName, final AnnotationInformation info) {
         int idx = fullClassName.lastIndexOf(".");
         final String packageName = fullClassName.substring(0, idx);
         final String className = fullClassName.substring(idx+1);
         addToResults(map, packageName, className, info);
+    }*/
+
+    private void addToResults(final String fullClassName, final AnnotationInformation info) {
+        int idx = fullClassName.lastIndexOf(".");
+        final String packageName = fullClassName.substring(0, idx);
+        final String className = fullClassName.substring(idx+1);
+        addToResults(packageName, className, info);
     }
 
-    private void addToResults(final Map<String, List<ClassAnnotation>> map, final String packageName, final String className, final AnnotationInformation info) {
+    /*private void addToResults(final Map<String, List<ClassAnnotation>> map, final String packageName, final String className, final AnnotationInformation info) {
         List<ClassAnnotation> l = map.get(className);
         if (null == l) {
             l = new ArrayList<ClassAnnotation>();
@@ -70,10 +80,44 @@ public class AnnotationScanResults {
         classAnnotation.addAnnotation(info);
         l.add(classAnnotation);
         map.put(packageName, l);
+    }*/
+
+    private void addToResults(final String packageName, final String className, final AnnotationInformation info) {
+        PackageScanResults packageScanResults = results.get(packageName);
+        if (null == packageScanResults) {
+            packageScanResults = new PackageScanResults(packageName);
+        }
+        packageScanResults.addResult(className, info);
+        results.put(packageName, packageScanResults);
+        /*List<ClassAnnotation> l = results.get(className);
+        if (null == l) {
+            l = new ArrayList<ClassAnnotation>();
+        }
+
+        ClassAnnotation classAnnotation = null;
+        for (final ClassAnnotation ca : l) {
+            if (ca.getClassName().equals(className)) {
+                classAnnotation = ca;
+                break;
+            }
+        }
+        if (null == classAnnotation) {
+            classAnnotation = new ClassAnnotation(packageName, className);
+        }
+        classAnnotation.addAnnotation(info);
+        l.add(classAnnotation);
+        results.put(packageName, l);*/
     }
 
-    public void merge(final AnnotationScanResults results) {
-        if (results.hasKnownDefectResults()) {
+    public void merge(final AnnotationScanResults mergeSource) {
+        for (final PackageScanResults packageScanResults : mergeSource.getAllResults()) {
+            if (results.containsKey(packageScanResults.getPackageName())) {
+                results.get(packageScanResults.getPackageName()).merge(packageScanResults);
+            } else {
+                results.put(packageScanResults.getPackageName(), packageScanResults);
+            }
+        }
+        /*if (results.hasKnownDefectResults()) {
             for (final Map.Entry<String, List<ClassAnnotation>> entry : results.getKnownDefectResults().entrySet()) {
                 for (final ClassAnnotation classAnnotation : entry.getValue()) {
                     for (final AnnotationInformation information : classAnnotation.getAnnotations()) {
@@ -81,38 +125,58 @@ public class AnnotationScanResults {
                     }
                 }
             }
-        }
+        }*/
     }
 
-    /**
-     * Get all found KnownDefect annotations
-     * @return Map of results, with class name found in as key. May be empty.
-     */
+    public List<PackageScanResults> getAllResults() {
+        final List<PackageScanResults> allResults = new ArrayList<PackageScanResults>(results.values());
+        Collections.sort(allResults);
+        return allResults;
+    }
+
     public Map<String, List<ClassAnnotation>> getKnownDefectResults() {
+        final Map<String, List<ClassAnnotation>> knownDefectResults = new TreeMap<String , List<ClassAnnotation>>();
+        for (final Map.Entry<String, PackageScanResults> entry : results.entrySet()) {
+            if (entry.getValue().hasKnownDefectResults()) {
+                knownDefectResults.put(entry.getKey(), entry.getValue().getKnownDefectResults());
+            }
+        }
         return knownDefectResults;
     }
 
-    /**
-     * Get all found KnownAndAcceptedDefect annotations
-     * @return Map of results, with class name found in as key. May be empty.
-     */
-    public Map<String, List<ClassAnnotation>> getKnownAcceptedDefectResults() {
+    /*public Map<String, List<ClassAnnotation>> getKnownAcceptedDefectResults() {
         return knownAcceptedDefectResults;
-    }
+    }*/
 
     public boolean hasKnownDefectResults() {
-        return !knownDefectResults.isEmpty();
+        for (final Map.Entry<String, PackageScanResults> entry : results.entrySet()) {
+            if (entry.getValue().hasKnownDefectResults()) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    public boolean hasKnownAcceptedDefectResults() {
+    /*public boolean hasKnownAcceptedDefectResults() {
         return !knownAcceptedDefectResults.isEmpty();
+    }*/
+
+    public boolean hasResults() {
+        //return (hasKnownDefectResults() || hasKnownAcceptedDefectResults());
+        return (hasKnownDefectResults());
     }
 
     public int getKnownDefectResultsCount() {
-        return knownDefectResults.size();
+        int count = 0;
+        for (final PackageScanResults packageScanResults : results.values()) {
+            if (packageScanResults.hasKnownDefectResults()) {
+                count += packageScanResults.getKnownDefectResultsCount();
+            }
+        }
+        return count;
     }
 
-    public int getKnownAcceptedDefectResultsCount() {
+    /*public int getKnownAcceptedDefectResultsCount() {
         return knownAcceptedDefectResults.size();
-    }
+    }*/
 }

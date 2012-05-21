@@ -25,7 +25,7 @@ import java.util.Map;
  * Abstract implementation of AnnotationInformation. Handles common behavior.
  * @see AnnotationInformation
  */
-public class AbstractInformation implements AnnotationInformation {
+public abstract class AbstractInformation implements AnnotationInformation {
     private String className;
     private String methodName;
     private int lineNumber;
@@ -66,5 +66,10 @@ public class AbstractInformation implements AnnotationInformation {
 
     public void setLineNumber(int lineNumber) {
         this.lineNumber = lineNumber;
+    }
+
+    @Override
+    public int compareTo(AnnotationInformation information) {
+        return this.getMethodName().compareTo(information.getMethodName());
     }
 }
