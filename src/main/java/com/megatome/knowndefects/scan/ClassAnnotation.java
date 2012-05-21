@@ -18,6 +18,12 @@ public class ClassAnnotation implements Comparable<ClassAnnotation> {
         this.className = className;
     }
 
+    /*public ClassAnnotation(final ClassAnnotation classAnnotation) {
+        this(classAnnotation.getPackageName(), classAnnotation.getClassName());
+        this.annotations.addAll(classAnnotation.annotations);
+        Collections.sort(annotations);
+    }*/
+
     public String getPackageName() {
         return packageName;
     }

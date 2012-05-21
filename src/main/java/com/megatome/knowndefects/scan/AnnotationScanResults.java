@@ -144,6 +144,16 @@ public class AnnotationScanResults {
         return knownDefectResults;
     }
 
+    public Map<String, List<ClassAnnotation>> getKnownAcceptedDefectResults() {
+        final Map<String, List<ClassAnnotation>> knownAcceptedDefectResults = new TreeMap<String , List<ClassAnnotation>>();
+        for (final Map.Entry<String, PackageScanResults> entry : results.entrySet()) {
+            if (entry.getValue().hasKnownAcceptedDefectResults()) {
+                knownAcceptedDefectResults.put(entry.getKey(), entry.getValue().getKnownAcceptedDefectResults());
+            }
+        }
+        return knownAcceptedDefectResults;
+    }
+
     /*public Map<String, List<ClassAnnotation>> getKnownAcceptedDefectResults() {
         return knownAcceptedDefectResults;
     }*/
@@ -157,13 +167,17 @@ public class AnnotationScanResults {
         return false;
     }
 
-    /*public boolean hasKnownAcceptedDefectResults() {
-        return !knownAcceptedDefectResults.isEmpty();
-    }*/
+    public boolean hasKnownAcceptedDefectResults() {
+        for (final Map.Entry<String, PackageScanResults> entry : results.entrySet()) {
+            if (entry.getValue().hasKnownAcceptedDefectResults()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public boolean hasResults() {
-        //return (hasKnownDefectResults() || hasKnownAcceptedDefectResults());
-        return (hasKnownDefectResults());
+        return (hasKnownDefectResults() || hasKnownAcceptedDefectResults());
     }
 
     public int getKnownDefectResultsCount() {
@@ -176,7 +190,13 @@ public class AnnotationScanResults {
         return count;
     }
 
-    /*public int getKnownAcceptedDefectResultsCount() {
-        return knownAcceptedDefectResults.size();
-    }*/
+    public int getKnownAcceptedDefectResultsCount() {
+        int count = 0;
+        for (final PackageScanResults packageScanResults : results.values()) {
+            if (packageScanResults.hasKnownAcceptedDefectResults()) {
+                count += packageScanResults.getKnownAcceptedDefectResultsCount();
+            }
+        }
+        return count;
+    }
 }
