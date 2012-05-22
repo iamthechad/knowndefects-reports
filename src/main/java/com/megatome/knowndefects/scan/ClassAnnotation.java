@@ -1,6 +1,5 @@
 package com.megatome.knowndefects.scan;
 
-import com.google.common.base.internal.Finalizer;
 import com.megatome.knowndefects.info.AnnotationInformation;
 
 import java.util.ArrayList;
@@ -14,15 +13,12 @@ public class ClassAnnotation implements Comparable<ClassAnnotation> {
     private List<AnnotationInformation> annotations = new ArrayList<AnnotationInformation>();
 
     public ClassAnnotation(final String packageName, final String className) {
+        if (null == packageName || null == className) {
+            throw new IllegalArgumentException("Both packageName and className must be specified");
+        }
         this.packageName = packageName;
         this.className = className;
     }
-
-    /*public ClassAnnotation(final ClassAnnotation classAnnotation) {
-        this(classAnnotation.getPackageName(), classAnnotation.getClassName());
-        this.annotations.addAll(classAnnotation.annotations);
-        Collections.sort(annotations);
-    }*/
 
     public String getPackageName() {
         return packageName;

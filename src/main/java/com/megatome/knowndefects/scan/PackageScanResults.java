@@ -89,23 +89,6 @@ public class PackageScanResults implements Comparable<PackageScanResults> {
         return classNames;
     }
 
-    /*public List<ClassAnnotation> getAllResults() {
-        final Map<String, ClassAnnotation> resultsMap = new TreeMap<String, ClassAnnotation>();
-        for (final Map.Entry<String, ClassAnnotation> entry : knownDefectResults.entrySet()) {
-            resultsMap.put(entry.getKey(), new ClassAnnotation(entry.getValue()));
-        }
-        for (final Map.Entry<String, ClassAnnotation> entry : knownAcceptedDefectResults.entrySet()) {
-            if (resultsMap.containsKey(entry.getKey())) {
-                resultsMap.get(entry.getKey()).merge(entry.getValue());
-            } else {
-                resultsMap.put(entry.getKey(), new ClassAnnotation(entry.getValue()));
-            }
-        }
-        final List<ClassAnnotation> resultsList = new ArrayList<ClassAnnotation>(resultsMap.values());
-        Collections.sort(resultsList);
-        return resultsList;
-    }*/
-
     public void merge(final PackageScanResults mergeSource) {
         for (final ClassAnnotation classAnnotation : mergeSource.getKnownDefectResults()) {
             if (knownDefectResults.containsKey(classAnnotation.getClassName())) {
