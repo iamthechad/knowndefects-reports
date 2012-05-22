@@ -3,3 +3,4 @@ knowndefects-reports.ipr
 knowndefects-reports.iws
 .idea/
 target/
+src/test/.DS_Store
