@@ -37,6 +37,10 @@ import java.util.*;
  * @execute phase="test"
  */
 public class KnownDefectsReportMojo extends AbstractMavenReport implements MavenReport {
+    public static final String KD_PREFIX = "kd.";
+    public static final String KAD_PREFIX = "kad.";
+    public static final String KDPACKAGE = "kdpackage";
+    public static final String KADPACKAGE = "kadpackage";
     /**
      * <i>Maven Internal</i>: The project descriptor
      *
@@ -97,15 +101,16 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
     @Override
     protected void executeReport(Locale locale) throws MavenReportException {
         if (!outputDirectory.exists()) {
-            outputDirectory.mkdirs();
+            if (!outputDirectory.mkdirs()) {
+                throw new MavenReportException("Could not create report output directory");
+            }
         }
 
         final AnnotationScanResults scanResults = new AnnotationScanResults();
         for (final Object obj : getSourceRoots()) {
             final String path = (String)obj;
             try {
-                final AnnotationScanResults results = AnnotationScanner.findAnnotationsInPath(path, getLog());
-                scanResults.merge(results);
+                scanResults.merge(AnnotationScanner.findAnnotationsInPath(path, getLog()));
             } catch (AnnotationScanException e) {
                 getLog().error("Could not load annotations", e);
                 throw new MavenReportException("Failed to scan test classes", e);
@@ -115,7 +120,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         final Sink sink = getSink();
         sink.head();
         sink.title();
-        sink.text("Known Defects Report");
+        sink.text(getName(locale));
         sink.title_();
         sink.head_();
 
@@ -123,63 +128,63 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
 
         sink.section1();
         sink.sectionTitle1();
-        sink.text("Known Defects Report");
+        sink.text(getName(locale));
         sink.sectionTitle1_();
         sink.section1_();
 
-        buildSummary(sink, scanResults);
-        buildPackageList(sink, scanResults);
-        buildAnnotationsList(sink, scanResults);
+        buildSummary(sink, locale, scanResults);
+        buildPackageList(sink, locale, scanResults);
+        buildAnnotationsList(sink, locale, scanResults);
 
         sink.body_();
         sink.flush();
         sink.close();
     }
 
-    private void buildNavLinks(final Sink sink) {
+    private void buildNavLinks(final Sink sink, final Locale locale) {
         sink.paragraph();
         sink.text("[");
         sink.link("#summary");
-        sink.text("Summary");
+        sink.text(getBundle(locale).getString("summary.link.name"));
         sink.link_();
         sink.text("][");
         sink.link("#package");
-        sink.text("Package List");
+        sink.text(getBundle(locale).getString("packagelist.link.name"));
         sink.link_();
         sink.text("][");
         sink.link("#annotations");
-        sink.text("Annotations");
+        sink.text(getBundle(locale).getString("annotations.link.name"));
         sink.link_();
         sink.text("]");
         sink.paragraph_();
     }
 
-    private void buildSummary(final Sink sink, final AnnotationScanResults scanResults) {
+    private void buildSummary(final Sink sink, final Locale locale, final AnnotationScanResults scanResults) {
         sink.section1();
         sink.sectionTitle1();
         sink.anchor("summary");
-        sink.text("Summary");
+        sink.text(getBundle(locale).getString("summary.link.name"));
         sink.anchor_();
         sink.sectionTitle1_();
 
-        buildNavLinks(sink);
+        buildNavLinks(sink, locale);
 
         sink.table();
         sink.tableRow();
         sink.tableHeaderCell();
-        sink.text("Annotation Name");
+        sink.text(getBundle(locale).getString("annotation.name.cell.header"));
         sink.tableHeaderCell_();
         sink.tableHeaderCell();
-        sink.text("Count");
+        sink.text(getBundle(locale).getString("annotation.count.cell.header"));
         sink.tableHeaderCell_();
         sink.tableRow_();
 
         if (scanResults.hasKnownDefectResults()) {
-            buildPackageSummaryRow(sink, "#kdpackage", "@KnownDefect", scanResults.getKnownDefectResultsCount());
+            buildPackageSummaryRow(sink, KDPACKAGE, getBundle(locale).getString("knowndefect.annotation.name"), scanResults.getKnownDefectResultsCount());
         }
 
         if (scanResults.hasKnownAcceptedDefectResults()) {
-            buildPackageSummaryRow(sink, "#kadpackage", "@KnownAndAcceptedDefect", scanResults.getKnownAcceptedDefectResultsCount());
+            buildPackageSummaryRow(sink, KADPACKAGE, getBundle(locale).getString("knownaccepteddefect.annotation.name"), scanResults.getKnownAcceptedDefectResultsCount());
         }
 
         sink.table_();
@@ -189,7 +194,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
     private void buildPackageSummaryRow(final Sink sink, final String linkName, final String annotationName, final int count) {
         sink.tableRow();
         sink.tableCell();
-        sink.link(linkName);
+        sink.link("#" + linkName);
         sink.text(annotationName);
         sink.link_();
         sink.anchor_();
@@ -200,27 +205,27 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.tableRow_();
     }
 
-    private void buildPackageList(final Sink sink, final AnnotationScanResults scanResults) {
+    private void buildPackageList(final Sink sink, final Locale locale, final AnnotationScanResults scanResults) {
         sink.section1();
         sink.sectionTitle1();
         sink.anchor("package");
-        sink.text("Package List");
+        sink.text(getBundle(locale).getString("packagelist.link.name"));
         sink.anchor_();
         sink.sectionTitle1_();
 
-        buildNavLinks(sink);
+        buildNavLinks(sink, locale);
 
         if (scanResults.hasKnownDefectResults()) {
-            buildPackageSummary(sink, "kdpackage", "@KnownDefect", "kd.", scanResults.getKnownDefectResults());
+            buildPackageSummary(sink, locale, KDPACKAGE, getBundle(locale).getString("knowndefect.annotation.name"), KD_PREFIX, scanResults.getKnownDefectResults());
         }
 
         if (scanResults.hasKnownAcceptedDefectResults()) {
-            buildPackageSummary(sink, "kadpackage", "@KnownAndAcceptedDefect", "kad.", scanResults.getKnownAcceptedDefectResults());
+            buildPackageSummary(sink, locale, KADPACKAGE, getBundle(locale).getString("knownaccepteddefect.annotation.name"), KAD_PREFIX, scanResults.getKnownAcceptedDefectResults());
         }
         sink.section1_();
     }
 
-    private void buildPackageSummary(final Sink sink, final String sectionAnchor, final String annotationName, final String anchorPrefix, final Map<String, List<ClassAnnotation>> resultMap) {
+    private void buildPackageSummary(final Sink sink, final Locale locale, final String sectionAnchor, final String annotationName, final String anchorPrefix, final Map<String, List<ClassAnnotation>> resultMap) {
         sink.section2();
         sink.sectionTitle2();
         sink.anchor(sectionAnchor);
@@ -231,10 +236,10 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.table();
         sink.tableRow();
         sink.tableHeaderCell();
-        sink.text("Package");
+        sink.text(getBundle(locale).getString("package.name.cell.header"));
         sink.tableHeaderCell_();
         sink.tableHeaderCell();
-        sink.text("Count");
+        sink.text(getBundle(locale).getString("annotation.count.cell.header"));
         sink.tableHeaderCell_();
         sink.tableRow_();
 
@@ -245,7 +250,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.table_();
 
         for (final Map.Entry<String, List<ClassAnnotation>> entry : resultMap.entrySet()) {
-            buildClassSummary(sink, entry.getKey(), entry.getValue(), anchorPrefix);
+            buildClassSummary(sink, locale, entry.getKey(), entry.getValue(), anchorPrefix);
         }
 
         sink.section2_();
@@ -264,7 +269,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.tableRow_();
     }
 
-    private void buildClassSummary(final Sink sink, final String className, final List<ClassAnnotation> annotationList, final String anchorPrefix) {
+    private void buildClassSummary(final Sink sink, final Locale locale, final String className, final List<ClassAnnotation> annotationList, final String anchorPrefix) {
         sink.section3();
         sink.sectionTitle3();
         sink.anchor(anchorPrefix + className);
@@ -275,10 +280,10 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.table();
         sink.tableRow();
         sink.tableHeaderCell();
-        sink.text("Class");
+        sink.text(getBundle(locale).getString("class.name.cell.header"));
         sink.tableHeaderCell_();
         sink.tableHeaderCell();
-        sink.text("Count");
+        sink.text(getBundle(locale).getString("annotation.count.cell.header"));
         sink.tableHeaderCell_();
         sink.tableRow_();
 
@@ -292,7 +297,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
     private void buildClassAnnotationSummaryRow(final Sink sink, final ClassAnnotation classAnnotation) {
         sink.tableRow();
         sink.tableCell();
-        sink.link("#kd." + classAnnotation.getClassName());
+        sink.link("#" + KD_PREFIX + classAnnotation.getClassName());
         sink.text(classAnnotation.getClassName());
         sink.link_();
         sink.tableCell_();
@@ -302,37 +307,37 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.tableRow_();
     }
 
-    private void buildAnnotationsList(final Sink sink, final AnnotationScanResults scanResults) {
+    private void buildAnnotationsList(final Sink sink, final Locale locale, final AnnotationScanResults scanResults) {
         sink.section1();
         sink.sectionTitle1();
         sink.anchor("annotations");
-        sink.text("Annotations");
+        sink.text(getBundle(locale).getString("annotations.link.name"));
         sink.anchor_();
         sink.sectionTitle1_();
 
-        buildNavLinks(sink);
+        buildNavLinks(sink, locale);
 
         for (final PackageScanResults packageScanResults : scanResults.getAllResults()) {
             for (final String className : packageScanResults.getClassNames()) {
                 sink.section2();
                 sink.sectionTitle2();
-                sink.anchor("kd." + className);
+                sink.anchor(KD_PREFIX + className);
                 sink.text(className);
                 sink.sectionTitle2_();
 
                 if (packageScanResults.hasKnownDefectResults(className)) {
-                    buildMethodAnnotationSection(sink,
+                    buildMethodAnnotationSection(sink, locale,
                             packageScanResults.getKnownDefectResults(className),
-                            "@KnownDefect",
-                            new String[] {"Note"},
+                            getBundle(locale).getString("knowndefect.annotation.name"),
+                            new String[] {getBundle(locale).getString("note.cell.header")},
                             new String[] {"value"});
                 }
 
                 if (packageScanResults.hasKnownAcceptedDefectResults(className)) {
-                    buildMethodAnnotationSection(sink,
+                    buildMethodAnnotationSection(sink, locale,
                             packageScanResults.getKnownAcceptedDefectResults(className),
-                            "@KnownAndAcceptedDefect",
-                            new String[] {"Author", "Date", "Note"},
+                            getBundle(locale).getString("knownaccepteddefect.annotation.name"),
+                            new String[] {getBundle(locale).getString("author.cell.header"), getBundle(locale).getString("date.cell.header"), getBundle(locale).getString("note.cell.header")},
                             new String[] {"author", "date", "reason"});
                 }
                 sink.section2_();
@@ -341,7 +346,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.section1_();
     }
 
-    private void buildMethodAnnotationSection(final Sink sink, final ClassAnnotation classAnnotation, final String sectionName, final String[] columnHeaders, final String[] columnMethodValues) {
+    private void buildMethodAnnotationSection(final Sink sink, final Locale locale, final ClassAnnotation classAnnotation, final String sectionName, final String[] columnHeaders, final String[] columnMethodValues) {
         sink.paragraph();
         sink.bold();
         sink.text(sectionName);
@@ -349,18 +354,18 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         sink.paragraph_();
 
         sink.table();
-        buildMethodAnnotationTableHeader(sink, columnHeaders);
+        buildMethodAnnotationTableHeader(sink, locale, columnHeaders);
         buildMethodAnnotationRows(sink, classAnnotation, columnMethodValues);
         sink.table_();
     }
 
-    private void buildMethodAnnotationTableHeader(final Sink sink, final String... columns) {
+    private void buildMethodAnnotationTableHeader(final Sink sink, final Locale locale, final String... columns) {
         sink.tableRow();
         sink.tableHeaderCell();
-        sink.text("Method Name");
+        sink.text(getBundle(locale).getString("method.name.cell.header"));
         sink.tableHeaderCell_();
         sink.tableHeaderCell();
-        sink.text("Line");
+        sink.text(getBundle(locale).getString("line.number.cell.header"));
         sink.tableHeaderCell_();
         for (final String columnName : columns) {
             sink.tableHeaderCell();
