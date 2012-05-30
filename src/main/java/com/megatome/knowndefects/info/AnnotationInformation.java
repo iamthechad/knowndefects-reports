@@ -23,6 +23,12 @@ import java.util.List;
  */
 public interface AnnotationInformation extends Comparable<AnnotationInformation> {
     /**
+     * Get the name of this annotation.
+     * @return Annotation name as it would appear in code.
+     */
+    String getAnnotationName();
+
+    /**
      * Get the list of all found method names within the annotation.
      * @return Found annotation method names. Will be empty if none found.
      */

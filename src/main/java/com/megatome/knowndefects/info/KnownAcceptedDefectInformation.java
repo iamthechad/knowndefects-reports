@@ -16,6 +16,8 @@
 
 package com.megatome.knowndefects.info;
 
+import com.megatome.knowndefects.Constants;
+
 /**
  * Information class representing KnownAndAcceptedDefect annotation
  * @see AnnotationInformation
@@ -43,5 +45,10 @@ public class KnownAcceptedDefectInformation extends AbstractInformation {
      */
     public String getReason() {
         return getMethodValue("reason");
+    }
+
+    @Override
+    public String getAnnotationName() {
+        return Constants.KNOWN_ACCEPTED_DEFECT_ANNOTATION_NAME;
     }
 }

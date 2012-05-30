@@ -26,7 +26,6 @@ import javassist.bytecode.AnnotationsAttribute;
 import javassist.bytecode.ClassFile;
 import javassist.bytecode.MethodInfo;
 import javassist.bytecode.annotation.Annotation;
-import org.apache.maven.plugin.logging.Log;
 
 import java.io.*;
 import java.util.*;
@@ -55,13 +54,12 @@ public class AnnotationScanner {
      * @return Object containing all found annotation results
      * @throws AnnotationScanException If an error occurs
      */
-    public static AnnotationScanResults findAnnotationsInPath(final String basePath, final Log log) throws AnnotationScanException {
-        log.info("Looking for annotations in path " + basePath);
+    public static AnnotationScanResults findAnnotationsInPath(final String basePath) throws AnnotationScanException {
         if ((null == basePath) || (basePath.isEmpty())) {
             throw new IllegalArgumentException("Base path cannot be null");
         }
         try {
-            scanArchives(new File(basePath), log);
+            scanArchives(new File(basePath));
         } catch (IOException e) {
             throw new AnnotationScanException("Error scanning for annotations", e);
         }
@@ -69,24 +67,22 @@ public class AnnotationScanner {
         return results;
     }
 
-    private static void scanArchives(final File f, final Log log) throws IOException, AnnotationScanException {
+    private static void scanArchives(final File f) throws IOException, AnnotationScanException {
         final Filter filter = new Filter() {
             public boolean accepts(String filename) {
                 if (filename.endsWith(".class")) {
                     if (filename.startsWith("/")) filename = filename.substring(1);
                     if (!ignoreScan(filename.replace('/', '.'))) {
-                        log.info("Filename " + filename + " accepted by filter");
                         return true;
                     }
                 }
 
-                log.info("Filename " + filename + " rejected by the filter");
                 return false;
             }
         };
         final StreamIterator it = new FileIterator(f, filter);
         InputStream stream;
-        while ((stream = it.next()) != null) scanClass(stream, log);
+        while ((stream = it.next()) != null) scanClass(stream);
     }
 
     private static boolean ignoreScan(String intf) {
@@ -98,20 +94,19 @@ public class AnnotationScanner {
         return false;
     }
 
-    private static void scanClass(InputStream bits, final Log log)
+    private static void scanClass(InputStream bits)
             throws IOException {
         final DataInputStream dstream = new DataInputStream(new BufferedInputStream(bits));
         try {
             final ClassFile cf = new ClassFile(dstream);
-            scanMethods(cf, log);
+            scanMethods(cf);
         } finally {
             dstream.close();
             bits.close();
         }
     }
 
-    private static void scanMethods(ClassFile cf, final Log log) {
-        log.info("Looking at ClassFile " + cf.getName());
+    private static void scanMethods(ClassFile cf) {
         final List methods = cf.getMethods();
         if (methods == null) {
             return;

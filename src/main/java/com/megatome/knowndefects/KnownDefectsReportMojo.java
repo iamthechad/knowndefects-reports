@@ -25,7 +25,17 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.reporting.AbstractMavenReport;
 import org.apache.maven.reporting.MavenReport;
 import org.apache.maven.reporting.MavenReportException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.util.*;
 
@@ -33,7 +43,7 @@ import java.util.*;
  * Goal for creating a report of KnownDefect annotations
  *
  * @author cjohnston
- * @goal knowndefects-report
+ * @goal report
  * @execute phase="test"
  */
 public class KnownDefectsReportMojo extends AbstractMavenReport implements MavenReport {
@@ -53,7 +63,7 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
     /**
      * Report output dir
      *
-     * @parameter expression="${project.reporting.outputDirectory}/knowndefects"
+     * @parameter expression="${project.reporting.outputDirectory}"
      */
     private File outputDirectory;
 
@@ -73,6 +83,20 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
      * @component
      */
     private Renderer renderer;
+
+    /**
+     * Report output format. Can be either 'xml' or 'html'. Defaults to 'html'.
+     *
+     * @parameter expression="${knowndefects.report.format}" default-value="html"
+     */
+    private String format;
+
+    private boolean externalReport = false;
+
+    @Override
+    public boolean isExternalReport() {
+        return externalReport;
+    }
 
     @Override
     protected MavenProject getProject() {
@@ -100,6 +124,16 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
 
     @Override
     protected void executeReport(Locale locale) throws MavenReportException {
+        if ("xml".equalsIgnoreCase(format)) {
+            getLog().info("Setting report type to XML");
+            this.externalReport = true;
+        } else if ("html".equalsIgnoreCase(format)) {
+            getLog().info("Setting report type to HTML");
+            this.externalReport = false;
+        } else {
+            throw new MavenReportException("Specified format type " + format + " is invalid. Must be one of 'xml' or 'html'");
+        }
+
         if (!outputDirectory.exists()) {
             if (!outputDirectory.mkdirs()) {
                 throw new MavenReportException("Could not create report output directory");
@@ -110,35 +144,98 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         for (final Object obj : getSourceRoots()) {
             final String path = (String)obj;
             try {
-                scanResults.merge(AnnotationScanner.findAnnotationsInPath(path, getLog()));
+                scanResults.merge(AnnotationScanner.findAnnotationsInPath(path));
             } catch (AnnotationScanException e) {
                 getLog().error("Could not load annotations", e);
                 throw new MavenReportException("Failed to scan test classes", e);
             }
         }
 
-        final Sink sink = getSink();
-        sink.head();
-        sink.title();
-        sink.text(getName(locale));
-        sink.title_();
-        sink.head_();
+        if (!isExternalReport()) {
+            final Sink sink = getSink();
+            sink.head();
+            sink.title();
+            sink.text(getName(locale));
+            sink.title_();
+            sink.head_();
 
-        sink.body();
+            sink.body();
 
-        sink.section1();
-        sink.sectionTitle1();
-        sink.text(getName(locale));
-        sink.sectionTitle1_();
-        sink.section1_();
+            sink.section1();
+            sink.sectionTitle1();
+            sink.text(getName(locale));
+            sink.sectionTitle1_();
+            sink.section1_();
 
-        buildSummary(sink, locale, scanResults);
-        buildPackageList(sink, locale, scanResults);
-        buildAnnotationsList(sink, locale, scanResults);
+            buildSummary(sink, locale, scanResults);
+            buildPackageList(sink, locale, scanResults);
+            buildAnnotationsList(sink, locale, scanResults);
 
-        sink.body_();
-        sink.flush();
-        sink.close();
+            sink.body_();
+            sink.flush();
+            sink.close();
+        } else {
+            // Build XML
+            final String reportsDir = getOutputDirectory() + "/knowndefects";
+            for (final PackageScanResults packageScanResults : scanResults.getAllResults()) {
+                for (final String className : packageScanResults.getClassNames()) {
+                    String fileName = packageScanResults.getPackageName() + "." + className + ".xml";
+                    final ClassAnnotation mergedAnnotations = new ClassAnnotation(packageScanResults.getPackageName(), className);
+                    mergedAnnotations.merge(packageScanResults.getKnownDefectResults(className)).merge(packageScanResults.getKnownAcceptedDefectResults(className));
+                    saveXMLReport(reportsDir, fileName, mergedAnnotations);
+                }
+            }
+        }
+    }
+
+    private void saveXMLReport(final String outputDirectory, final String fileName, final ClassAnnotation classResults) throws MavenReportException {
+        // Create file
+        // Build XML
+        try {
+            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+
+            Document doc = docBuilder.newDocument();
+            Element rootElement = doc.createElement("class");
+            doc.appendChild(rootElement);
+
+            Element packageElement = doc.createElement("package");
+            packageElement.appendChild(doc.createTextNode(classResults.getPackageName()));
+            rootElement.appendChild(packageElement);
+
+            Element classNameElement = doc.createElement("className");
+            classNameElement.appendChild(doc.createTextNode(classResults.getClassName()));
+            rootElement.appendChild(classNameElement);
+
+            for (final AnnotationInformation information: classResults.getAnnotations()) {
+                final Element annotationElement = doc.createElement("annotation");
+                annotationElement.setAttribute("type", information.getAnnotationName());
+                annotationElement.setAttribute("method", information.getMethodName());
+                rootElement.appendChild(annotationElement);
+
+                final Element valuesElement = doc.createElement("properties");
+                annotationElement.appendChild(valuesElement);
+
+                for (final String methodName : information.getMethodNames()) {
+                    final Element valueData = doc.createElement("property");
+                    valueData.setAttribute("name", methodName);
+                    valueData.setAttribute("value", information.getMethodValue(methodName));
+                    valuesElement.appendChild(valueData);
+                }
+            }
+            // Save XML
+
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+            StreamResult result = new StreamResult(new File(outputDirectory, fileName));
+
+            transformer.transform(source, result);
+        } catch (ParserConfigurationException e) {
+            throw new MavenReportException("Failed to save report " + fileName, e);
+        } catch (TransformerException e) {
+            throw new MavenReportException("Failed to save report " + fileName, e);
+        }
     }
 
     private void buildNavLinks(final Sink sink, final Locale locale) {

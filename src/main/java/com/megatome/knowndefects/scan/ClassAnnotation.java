@@ -37,9 +37,12 @@ public class ClassAnnotation implements Comparable<ClassAnnotation> {
         return annotations;
     }
 
-    public void merge(final ClassAnnotation mergeSource) {
-        annotations.addAll(mergeSource.getAnnotations());
-        Collections.sort(annotations);
+    public ClassAnnotation merge(final ClassAnnotation mergeSource) {
+        if (null != mergeSource) {
+            annotations.addAll(mergeSource.getAnnotations());
+            Collections.sort(annotations);
+        }
+        return this;
     }
 
     @Override

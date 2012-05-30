@@ -21,4 +21,7 @@ public class Constants {
 
     public static final String KNOWN_ACCEPTED_DEFECT_ANNOTATION_CLASS = "com.megatome.knowndefects.annotations.KnownAndAcceptedDefect";
     public static final String KNOWN_DEFECT_ANNOTATION_CLASS = "com.megatome.knowndefects.annotations.KnownDefect";
+
+    public static final String KNOWN_ACCEPTED_DEFECT_ANNOTATION_NAME = "@KnownAndAcceptedDefect";
+    public static final String KNOWN_DEFECT_ANNOTATION_NAME = "@KnownDefect";
 }
