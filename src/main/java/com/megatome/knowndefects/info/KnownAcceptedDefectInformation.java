@@ -49,6 +49,6 @@ public class KnownAcceptedDefectInformation extends AbstractInformation {
 
     @Override
     public String getAnnotationName() {
-        return Constants.KNOWN_ACCEPTED_DEFECT_ANNOTATION_NAME;
+        return Constants.KNOWN_ACCEPTED_DEFECT_ANNOTATION_CLASS;
     }
 }

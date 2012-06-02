@@ -51,6 +51,8 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
     public static final String KAD_PREFIX = "kad.";
     public static final String KDPACKAGE = "kdpackage";
     public static final String KADPACKAGE = "kadpackage";
+    public static final String XML = "xml";
+    public static final String HTML = "html";
     /**
      * <i>Maven Internal</i>: The project descriptor
      *
@@ -93,6 +95,10 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
 
     private boolean externalReport = false;
 
+    private DocumentBuilder docBuilder = null;
+    private Transformer transformer = null;
+
+
     @Override
     public boolean isExternalReport() {
         return externalReport;
@@ -124,10 +130,22 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
 
     @Override
     protected void executeReport(Locale locale) throws MavenReportException {
-        if ("xml".equalsIgnoreCase(format)) {
+        if (XML.equalsIgnoreCase(format)) {
             getLog().info("Setting report type to XML");
             this.externalReport = true;
-        } else if ("html".equalsIgnoreCase(format)) {
+            final DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+            try {
+                docBuilder = docFactory.newDocumentBuilder();
+                final TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                transformer = transformerFactory.newTransformer();
+            } catch (ParserConfigurationException e) {
+                getLog().error("Could not create XML Document Builder", e);
+                throw new MavenReportException("Could not create XML output", e);
+            } catch (TransformerException e) {
+                getLog().error("Could not create XML Document Builder", e);
+                throw new MavenReportException("Could not create XML output", e);
+            }
+        } else if (HTML.equalsIgnoreCase(format)) {
             getLog().info("Setting report type to HTML");
             this.externalReport = false;
         } else {
@@ -152,58 +170,35 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
         }
 
         if (!isExternalReport()) {
-            final Sink sink = getSink();
-            sink.head();
-            sink.title();
-            sink.text(getName(locale));
-            sink.title_();
-            sink.head_();
-
-            sink.body();
-
-            sink.section1();
-            sink.sectionTitle1();
-            sink.text(getName(locale));
-            sink.sectionTitle1_();
-            sink.section1_();
-
-            buildSummary(sink, locale, scanResults);
-            buildPackageList(sink, locale, scanResults);
-            buildAnnotationsList(sink, locale, scanResults);
-
-            sink.body_();
-            sink.flush();
-            sink.close();
+            createHTMLReport(locale, scanResults);
         } else {
-            // Build XML
-            final String reportsDir = getOutputDirectory() + "/knowndefects";
-            for (final PackageScanResults packageScanResults : scanResults.getAllResults()) {
-                for (final String className : packageScanResults.getClassNames()) {
-                    String fileName = packageScanResults.getPackageName() + "." + className + ".xml";
-                    final ClassAnnotation mergedAnnotations = new ClassAnnotation(packageScanResults.getPackageName(), className);
-                    mergedAnnotations.merge(packageScanResults.getKnownDefectResults(className)).merge(packageScanResults.getKnownAcceptedDefectResults(className));
-                    saveXMLReport(reportsDir, fileName, mergedAnnotations);
-                }
+            createXMLReports(scanResults);
+        }
+    }
+
+    private void createXMLReports(final AnnotationScanResults scanResults) throws MavenReportException {
+        final String reportsDir = getOutputDirectory() + "/knowndefects";
+        for (final PackageScanResults packageScanResults : scanResults.getAllResults()) {
+            for (final String className : packageScanResults.getClassNames()) {
+                final String fileName = packageScanResults.getPackageName() + "." + className + ".xml";
+                final ClassAnnotation mergedAnnotations = new ClassAnnotation(packageScanResults.getPackageName(), className);
+                mergedAnnotations.merge(packageScanResults.getKnownDefectResults(className)).merge(packageScanResults.getKnownAcceptedDefectResults(className));
+                saveXMLReport(reportsDir, fileName, mergedAnnotations);
             }
         }
     }
 
     private void saveXMLReport(final String outputDirectory, final String fileName, final ClassAnnotation classResults) throws MavenReportException {
-        // Create file
-        // Build XML
         try {
-            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-
-            Document doc = docBuilder.newDocument();
-            Element rootElement = doc.createElement("class");
+            final Document doc = docBuilder.newDocument();
+            final Element rootElement = doc.createElement("annotationResults");
             doc.appendChild(rootElement);
 
-            Element packageElement = doc.createElement("package");
+            final Element packageElement = doc.createElement("package");
             packageElement.appendChild(doc.createTextNode(classResults.getPackageName()));
             rootElement.appendChild(packageElement);
 
-            Element classNameElement = doc.createElement("className");
+            final Element classNameElement = doc.createElement("className");
             classNameElement.appendChild(doc.createTextNode(classResults.getClassName()));
             rootElement.appendChild(classNameElement);
 
@@ -223,19 +218,39 @@ public class KnownDefectsReportMojo extends AbstractMavenReport implements Maven
                     valuesElement.appendChild(valueData);
                 }
             }
-            // Save XML
 
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(new File(outputDirectory, fileName));
+            final DOMSource source = new DOMSource(doc);
+            final StreamResult result = new StreamResult(new File(outputDirectory, fileName));
 
             transformer.transform(source, result);
-        } catch (ParserConfigurationException e) {
-            throw new MavenReportException("Failed to save report " + fileName, e);
         } catch (TransformerException e) {
             throw new MavenReportException("Failed to save report " + fileName, e);
         }
+    }
+
+    private void createHTMLReport(final Locale locale, final AnnotationScanResults scanResults) {
+        final Sink sink = getSink();
+        sink.head();
+        sink.title();
+        sink.text(getName(locale));
+        sink.title_();
+        sink.head_();
+
+        sink.body();
+
+        sink.section1();
+        sink.sectionTitle1();
+        sink.text(getName(locale));
+        sink.sectionTitle1_();
+        sink.section1_();
+
+        buildSummary(sink, locale, scanResults);
+        buildPackageList(sink, locale, scanResults);
+        buildAnnotationsList(sink, locale, scanResults);
+
+        sink.body_();
+        sink.flush();
+        sink.close();
     }
 
     private void buildNavLinks(final Sink sink, final Locale locale) {
