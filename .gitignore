@@ -1,6 +1,6 @@
-knowndefects-reports.iml
-knowndefects-reports.ipr
-knowndefects-reports.iws
+*.iml
+*.ipr
+*.iws
 .idea/
 target/
 src/test/.DS_Store
