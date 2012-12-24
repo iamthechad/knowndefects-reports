@@ -7,4 +7,4 @@ a Maven site.
 
 ## The what annotations?
 
-Look [here](https://github.com/iamthechad/knowndefects) for more information.
+Look [here](http://iamthechad.github.com/knowndefects/) for more information.
